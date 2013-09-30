@@ -29,14 +29,14 @@
                   [44 :F5]
                   [45 :D5]])
 
-;; this interface could be cleaned up
-(defn play-instrument-at [m start-beat instrument beat note]
-  (at (m (+ beat start-beat)) (saw-by-note note)))
+(defn play-instrument-at [time instrument note]
+  (at time (instrument note)))
 
-(defn play-song [score m beat-num]
+(defn play-song [score m start-beat]
   (doseq [pair score]
     (let [[beat note] pair]
-      (play-instrument-at m beat-num saw-by-note beat note))))
+      (play-instrument-at (m (+ start-beat beat))
+                          saw-by-note note))))
 
 (definst noisey [freq 420 attack 0.004 sustain 0.1 release 0.04 vol 0.15]
   (* (env-gen (lin-env attack sustain release) 1 1 0 1 FREE)
