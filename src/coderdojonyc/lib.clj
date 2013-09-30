@@ -26,8 +26,8 @@
 
 (defn beat-length
   "Returns the length in milliseconds of a beat according to metronome
-`nome`. With `length` argument, returns the length of a musical duration; 1 =
-whole note, 1/4 = quarter-note, etc."
+  `nome`. With `length`, returns the length in MS of a beat-duration; 1 = whole
+  note, 1/4 = quarter-note, etc."
 
   ([nome]
      (/ (metro-tock nome) (metro-bpb nome)))
@@ -52,23 +52,27 @@ meto"
                         (* offset (metro-bpb nome)))) fun [])))
 
 (defmacro wait [beats & body]
-  " TODO: This should be the basic function the other music-rhythm scheduling
-functions depend on."
+  " TODO: This should become the basic function the other music-rhythm
+   scheduling functions depend on."
   (let [nome (gensym)]
     `(let [~nome metro]
        (-on-downbeat ~nome (fn [] ~@body) ~beats))))
 
 (defmacro with-delays
-  "Aceepts pairs of delays and expressions and defers eveluation by that many
-  beats.
+  "Accepts body as pairs beat-durations and expressions and defers evaluation of
+  each expression by the amount of its corresponding beat-duration.
+
+  Each pair is scheduled starting from the moment of evaluation, not
+  sequentially.
 
   (with-delays
      0 (first-part)
      1/4 (second-part))
      4 (third-part)
 
-  Would execute the (first-part) right away, (first-part) a quarter-note after
-  the start, and (third-part) four bars after the start.
+  Evaluating this expression would execute (first-part)
+  immediately, (second-part) a quarter-note after evaluation, and (third-part)
+  four bars after evaluation.
 "
   ([& body]
      (let [nome (gensym)]
