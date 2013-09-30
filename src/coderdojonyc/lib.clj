@@ -2,11 +2,20 @@
     (:gen-class))
 (use 'overtone.live)
 
+(defonce metro (metronome 120))
+
 ;; We use a saw-wave that we defined in the oscillators tutorial
 (definst saw-wave [freq 440 attack 0.01 sustain 0.1 release 0.01 vol 0.8] 
   (* (env-gen (lin-env attack sustain release) 1 1 0 1 FREE)
      (saw freq)
      vol))
+
+(definst smooth-saw [freq 440 attack 0.01 sustain 0.1 release 0.01 vol 0.5]
+  (let [amp-env (env-gen (lin-env attack sustain release) 1 1 0 1 FREE)
+        filter-env (env-gen (lin-env 0 (* sustain 0.5) release) 1 1 0 1)
+        signal (saw freq)]
+    (lpf (* signal amp-env vol)
+         (-> filter-env (* (i-rand 1000 2000)) (+ 300)))))
 
 ;; Let's make easier to pass notes
 (defn saw-by-note [music-note]
@@ -34,7 +43,30 @@
   ([nome length]
      (* length 4 (beat-length nome))))
 
-(defonce metro (metronome 120))
+(defn play-pattern
+  "Iterates through a pattern of [beat-duration note] pairs using
+  apply-at. Treats the pattern as a single voice; note events happen
+  sequentially.
+
+  (def shave-and-a-haircut
+      [[3/16 :C5] [1/8 :G4] [1/16 :G4] [3/16 :A4] [3/16 :G4]
+       [3/16 :rest] [3/16 :B4] [3/16 :C5] [3/16 :rest]])
+
+  ;; play a pattern
+  (play-pattern shave-and-a-haircut saw-by-note (now))
+
+  ;; loop pattern
+  (play-pattern (cycle shave-and-a-haircut) saw-by-note (now))
+"
+
+  [score instrument start-time]
+  (when-not (empty? score)
+    (let [[duration note] (first score),
+          next-time (+ start-time (beat-length metro duration))]
+      (when-not (= :rest note)
+        (at start-time (instrument note)))
+      (apply-at next-time
+                play-pattern (rest score) instrument next-time []))))
 
 (defmacro on-downbeat
   "Like a do form that delays evaluation until the next downbeat on the global
