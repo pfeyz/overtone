@@ -24,3 +24,60 @@
     )))
 
 
+(defn beat-length
+  "Returns the length in milliseconds of a beat according to metronome
+`nome`. With `length` argument, returns the length of a musical duration; 1 =
+whole note, 1/4 = quarter-note, etc."
+
+  ([nome]
+     (/ (metro-tock nome) (metro-bpb nome)))
+  ([nome length]
+     (* length 4 (beat-length nome))))
+
+(defonce metro (metronome 120))
+
+(defmacro on-downbeat
+  "Like a do form that delays evaluation until the next downbeat on the global
+meto"
+  ([& body]
+     (let [nome (gensym)]
+       `(let [~nome metro]
+          (-on-downbeat ~nome (fn [] ~@body )) []))))
+
+(defn -on-downbeat
+  ([nome fun]
+     (-on-downbeat nome fun 0))
+  ([nome fun offset]
+     (apply-at (nome (+ (* (metro-bar nome) (metro-bpb nome))
+                        (* offset (metro-bpb nome)))) fun [])))
+
+(defmacro wait [beats & body]
+  " TODO: This should be the basic function the other music-rhythm scheduling
+functions depend on."
+  (let [nome (gensym)]
+    `(let [~nome metro]
+       (-on-downbeat ~nome (fn [] ~@body) ~beats))))
+
+(defmacro with-delays
+  "Aceepts pairs of delays and expressions and defers eveluation by that many
+  beats.
+
+  (with-delays
+     0 (first-part)
+     1/4 (second-part))
+     4 (third-part)
+
+  Would execute the (first-part) right away, (first-part) a quarter-note after
+  the start, and (third-part) four bars after the start.
+"
+  ([& body]
+     (let [nome (gensym)]
+       `(let [~nome metro]
+          (-with-delays ~nome (quote ~body) )))))
+
+(defn -with-delays [nome pairs]
+  "TODO: This should use the wait function instead of -on-downbeat."
+  (loop [[offset fun & rst] pairs]
+    (when fun
+      (-on-downbeat nome #(eval fun) offset)
+      (recur rst))))
